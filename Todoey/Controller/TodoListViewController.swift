@@ -86,14 +86,15 @@ let context = (UIApplication.shared.delegate as! AppDelegate).persistentContaine
         }
     }
     
-    func loadItem ()
+    func loadItem (with request:NSFetchRequest<Item> = Item.fetchRequest())
     {
-        let request : NSFetchRequest<Item> = Item.fetchRequest()
+//        let request : NSFetchRequest<Item> = Item.fetchRequest()
         do{
-             itemArray = try context.fetch(request)
+            itemArray = try context.fetch(request)
         }catch{
             print("Fetching error \(error)")
         }
+        tableView.reloadData()
     }
     
    
@@ -111,12 +112,18 @@ extension TodoListViewController : UISearchBarDelegate
         let sortDecriptor = NSSortDescriptor(key: "title", ascending: true)
         request.sortDescriptors = [sortDecriptor]
         
-        do{
-            itemArray = try context.fetch(request)
-        }catch{
-            print("Fetching error \(error)")
+        loadItem(with: request)
+      
+    }
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            loadItem()
+            
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+           
         }
-         tableView.reloadData()
     }
 }
 
