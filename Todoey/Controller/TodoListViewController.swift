@@ -10,13 +10,18 @@ import UIKit
 import CoreData
 
 class TodoListViewController : UITableViewController{
-var itemArray = [Item]()
-let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var itemArray = [Item]()
+    var selectedCategory : Category? {
+        didSet{
+            //print("segue open")
+            loadItem()
+        }
+    }
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
-         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
-        loadItem()
+        // print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
     }
        
 
@@ -45,8 +50,7 @@ let context = (UIApplication.shared.delegate as! AppDelegate).persistentContaine
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         saveItem()
-
-       
+        
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
@@ -62,6 +66,7 @@ let context = (UIApplication.shared.delegate as! AppDelegate).persistentContaine
             let newItem = Item(context:self.context)
             newItem.title = textField.text!
             newItem.done = false
+            newItem.parentCategory = self.selectedCategory
             
             self.itemArray.append(newItem)
             self.saveItem()
@@ -70,7 +75,6 @@ let context = (UIApplication.shared.delegate as! AppDelegate).persistentContaine
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create New Item"
             textField = alertTextField
-           
         }
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
@@ -78,16 +82,26 @@ let context = (UIApplication.shared.delegate as! AppDelegate).persistentContaine
     
     func saveItem ()
     {
-        do{
+        do
+        {
             try context.save()
             tableView.reloadData()
-        }catch{
+        }
+        catch{
           print("Error saving context \(error)")
         }
     }
     
-    func loadItem (with request:NSFetchRequest<Item> = Item.fetchRequest())
+    func loadItem (with request:NSFetchRequest<Item> = Item.fetchRequest(), predicate : NSPredicate? = nil)
     {
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate,additionalPredicate])
+        }
+        else
+        {
+            request.predicate = categoryPredicate
+        }
 //        let request : NSFetchRequest<Item> = Item.fetchRequest()
         do{
             itemArray = try context.fetch(request)
@@ -112,7 +126,7 @@ extension TodoListViewController : UISearchBarDelegate
         let sortDecriptor = NSSortDescriptor(key: "title", ascending: true)
         request.sortDescriptors = [sortDecriptor]
         
-        loadItem(with: request)
+        loadItem(with: request,predicate: predicate)
       
     }
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
